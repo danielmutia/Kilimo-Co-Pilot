@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kilimo Co-Pilot v2 — MVP Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green-900:#173404;--green-800:#27500A;--green-700:#3B6D11;--green-600:#639922;
+  --green-400:#97C459;--green-200:#C0DD97;--green-100:#EAF3DE;
+  --amber-600:#854F0B;--amber-400:#BA7517;--amber-200:#FAC775;--amber-100:#FAEEDA;
+  --teal-700:#0F6E56;--teal-600:#1D9E75;--teal-400:#5DCAA5;--teal-100:#E1F5EE;
+  --coral-600:#993C1D;--coral-400:#D85A30;--coral-100:#FAECE7;
+  --blue-700:#0C447C;--blue-600:#185FA5;--blue-400:#378ADD;--blue-100:#E6F1FB;
+  --purple-700:#3C3489;--purple-400:#7F77DD;--purple-100:#EEEDFE;
+  --gray-700:#444441;--gray-600:#5F5E5A;--gray-400:#888780;--gray-200:#B4B2A9;--gray-100:#F1EFE8;
+  --bg:#F5F3EE;--surface:#ffffff;--text:#1a1a18;--muted:#5F5E5A;--border:rgba(0,0,0,0.09);
+  --font:'Sora',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+body { background:var(--bg);font-family:var(--font);color:var(--text);min-height:100vh; }
+.app { max-width:500px;margin:0 auto;background:var(--bg);min-height:100vh; }
+
+/* ROLE SWITCHER */
+.role-bar {
+  background:var(--gray-700);padding:8px 14px;display:flex;align-items:center;gap:8px;
+}
+.role-label { font-size:10px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.07em;margin-right:4px; }
+.role-btn {
+  font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;border:none;
+  cursor:pointer;font-family:var(--font);transition:all 0.15s;
+}
+.role-btn.active-farmer { background:var(--green-200);color:var(--green-800); }
+.role-btn.active-leader { background:var(--amber-200);color:var(--amber-600); }
+.role-btn.active-admin  { background:var(--purple-100);color:var(--purple-700); }
+.role-btn.inactive { background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.6); }
+
+/* TOP BAR */
+.topbar {
+  background:var(--surface);padding:12px 16px 10px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;
+}
+.logo-icon { width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.logo-text { font-size:14px;font-weight:600; }
+.logo-sub  { font-size:10px;color:var(--muted);margin-top:1px; }
+.role-badge { margin-left:auto;font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px; }
+
+/* NAV */
+.nav-tabs { display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none; }
+.nav-tabs::-webkit-scrollbar { display:none; }
+.nav-tab {
+  flex-shrink:0;padding:10px 13px;font-size:11px;font-weight:500;color:var(--muted);
+  cursor:pointer;border:none;background:none;border-bottom:2.5px solid transparent;
+  font-family:var(--font);white-space:nowrap;transition:all 0.15s;
+}
+.nav-tab.active-farmer { color:var(--green-700);border-bottom-color:var(--green-600); }
+.nav-tab.active-leader { color:var(--amber-600);border-bottom-color:var(--amber-400); }
+.nav-tab.active-admin  { color:var(--purple-700);border-bottom-color:var(--purple-400); }
+.nav-tab:hover { background:var(--gray-100); }
+
+.screen { display:none;padding:14px 14px 48px; }
+.screen.active { display:block; }
+
+/* COMMON */
+.card { background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:14px 16px;margin-bottom:10px; }
+.section-title { font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:14px 0 8px; }
+.info-row { display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border); }
+.info-row:last-child { border-bottom:none; }
+.info-label { font-size:13px;color:var(--muted); }
+.info-value { font-size:13px;font-weight:500;text-align:right;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:60%; }
+.tag { display:inline-block;font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px; }
+.tag-green { background:var(--green-100);color:var(--green-700); }
+.tag-amber { background:var(--amber-100);color:var(--amber-600); }
+.tag-teal  { background:var(--teal-100);color:var(--teal-700); }
+.tag-coral { background:var(--coral-100);color:var(--coral-600); }
+.tag-blue  { background:var(--blue-100);color:var(--blue-600); }
+.tag-purple{ background:var(--purple-100);color:var(--purple-700); }
+.banner { border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px;margin-bottom:10px; }
+.dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+.alert-box { border-radius:11px;padding:11px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:flex-start; }
+.btn { display:block;width:100%;padding:12px;border-radius:11px;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;text-align:center;border:none;margin-top:8px;transition:opacity 0.15s; }
+.btn:hover { opacity:0.85; }
+.btn-green  { background:var(--green-700);color:white; }
+.btn-amber  { background:var(--amber-400);color:white; }
+.btn-purple { background:var(--purple-700);color:white; }
+.btn-soft   { background:var(--green-100);color:var(--green-800); }
+.btn-outline{ background:transparent;border:1px solid var(--border);color:var(--text); }
+.progress-bar { height:7px;background:var(--gray-100);border-radius:4px;overflow:hidden; }
+.progress-fill { height:100%;border-radius:4px; }
+.rec-item { display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start; }
+.rec-item:last-child { border-bottom:none; }
+.rec-num { width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px; }
+.rec-text { font-size:12px;line-height:1.55; }
+.avatar { width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0; }
+.stat-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px; }
+.stat-box { background:var(--gray-100);border-radius:11px;padding:12px; }
+.stat-lbl { font-size:10px;color:var(--muted);margin-bottom:4px; }
+.stat-val { font-size:20px;font-weight:600;font-family:var(--mono); }
+.stat-sub { font-size:10px;color:var(--muted);margin-top:2px; }
+.form-label { font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;display:block; }
+select, input[type=text], input[type=number] {
+  width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--border);
+  font-family:var(--font);font-size:13px;color:var(--text);background:var(--surface);
+  appearance:none;margin-bottom:10px;
+}
+select:focus, input:focus { outline:2px solid var(--green-400);border-color:transparent; }
+
+/* HERO CARDS */
+.hero-green { background:var(--green-800);border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden; }
+.hero-green::before { content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;background:var(--green-700);opacity:0.4; }
+.hero-amber { background:var(--amber-600);border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden; }
+.hero-amber::before { content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;background:var(--amber-400);opacity:0.35; }
+.hero-purple { background:var(--purple-700);border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden; }
+.hero-purple::before { content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;background:var(--purple-400);opacity:0.3; }
+.hero-label { font-size:10px;font-weight:500;opacity:0.65;letter-spacing:0.09em;text-transform:uppercase;color:white;margin-bottom:3px; }
+.hero-name  { font-size:20px;font-weight:600;color:white;margin-bottom:3px; }
+.hero-sub   { font-size:11px;color:rgba(255,255,255,0.72);margin-bottom:12px; }
+.hero-stats { display:flex;gap:18px; }
+.hero-stat  { font-size:10px;color:rgba(255,255,255,0.6); }
+.hero-stat strong { display:block;font-size:17px;font-weight:600;color:var(--green-200);opacity:1; }
+
+/* TIMELINE */
+.timeline { position:relative;padding-left:22px; }
+.timeline::before { content:'';position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--border); }
+.tl-step { position:relative;margin-bottom:15px; }
+.tl-dot { position:absolute;left:-22px;top:3px;width:12px;height:12px;border-radius:50%;border:2.5px solid var(--surface); }
+.done{background:var(--green-600);} .current{background:var(--amber-400);} .pending{background:var(--gray-200);}
+.tl-label  { font-size:13px;font-weight:500; }
+.tl-detail { font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4; }
+
+/* CROP REC */
+.crop-card { border:1px solid var(--border);border-radius:13px;padding:14px;background:var(--surface);margin-bottom:10px; }
+.crop-top { display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px; }
+.crop-name { font-size:15px;font-weight:600; }
+.crop-score-ring { width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;font-family:var(--mono);flex-shrink:0; }
+.crop-bars { margin-top:10px; }
+.bar-row { display:flex;align-items:center;gap:8px;margin-bottom:7px; }
+.bar-label { font-size:10px;color:var(--muted);min-width:80px; }
+.bar-track { flex:1;height:5px;border-radius:3px;background:var(--gray-100);overflow:hidden; }
+.bar-fill  { height:100%;border-radius:3px; }
+
+/* MARKET MATCHING */
+.match-card { border:1px solid var(--border);border-radius:13px;padding:14px;background:var(--surface);margin-bottom:10px; }
+.match-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px; }
+.match-name { font-size:14px;font-weight:500; }
+.match-type { font-size:11px;color:var(--muted);margin-top:2px; }
+.match-price { font-size:20px;font-weight:600;font-family:var(--mono);color:var(--green-700);text-align:right; }
+.match-unit  { font-size:10px;color:var(--muted); }
+.match-meta  { display:flex;gap:12px;flex-wrap:wrap; }
+.meta-item   { font-size:11px;color:var(--muted); }
+.meta-item strong { color:var(--text);font-weight:500; }
+
+/* TABLE (admin) */
+.data-table { width:100%;border-collapse:collapse;font-size:12px; }
+.data-table th { text-align:left;font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;padding:6px 8px;border-bottom:1px solid var(--border); }
+.data-table td { padding:9px 8px;border-bottom:1px solid var(--border);color:var(--text); }
+.data-table tr:last-child td { border-bottom:none; }
+.data-table tr:hover td { background:var(--gray-100); }
+
+/* TABS within screen */
+.sub-tabs { display:flex;gap:6px;margin-bottom:12px; }
+.sub-tab { flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;text-align:center;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:var(--font);transition:all 0.15s; }
+.sub-tab.active { background:var(--green-100);color:var(--green-700);border-color:var(--green-200); }
+.sub-tab.active-a { background:var(--amber-100);color:var(--amber-600);border-color:var(--amber-200); }
+.sub-panel { display:none; }
+.sub-panel.active { display:block; }
+
+.divider { height:1px;background:var(--border);margin:14px 0; }
+.week-row { display:flex;gap:5px;margin-bottom:6px;align-items:flex-end; }
+.week-day { flex:1;text-align:center; }
+.day-label{ font-size:9px;color:var(--muted);margin-bottom:4px; }
+.day-bar  { border-radius:4px 4px 0 0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px; }
+.day-val  { font-size:9px;font-weight:500; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ROLE SWITCHER -->
+<div class="role-bar">
+  <span class="role-label">View as</span>
+  <button class="role-btn active-farmer" id="rb-farmer" onclick="setRole('farmer')">Farmer</button>
+  <button class="role-btn inactive"      id="rb-leader" onclick="setRole('leader')">Chama Leader</button>
+  <button class="role-btn inactive"      id="rb-admin"  onclick="setRole('admin')">Admin</button>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar" id="topbar">
+  <div class="logo-icon" id="logo-icon" style="background:var(--green-700);">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2C9 2 4.5 6 4.5 10.5C4.5 13.3 6.7 16 9 16C11.3 16 13.5 13.3 13.5 10.5C13.5 6 9 2 9 2Z" fill="#C0DD97"/><path d="M9 7V13M6.5 10L9 7L11.5 10" stroke="white" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+  <div>
+    <div class="logo-text" id="topbar-name">Kilimo Co-Pilot</div>
+    <div class="logo-sub" id="topbar-sub">Jane Wanjiru · Farmer</div>
+  </div>
+  <div class="role-badge" id="role-badge" style="background:var(--green-100);color:var(--green-700);">Farmer</div>
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-tabs" id="nav-tabs"></div>
+
+<!-- ===================== FARMER SCREENS ===================== -->
+
+<!-- F: HOME -->
+<div class="screen" id="f-home">
+  <div class="hero-green">
+    <div class="hero-label">Good morning</div>
+    <div class="hero-name">Jane Wanjiru</div>
+    <div class="hero-sub">Nyandarua · 1.8 ha · Potatoes &amp; Tomatoes · Irrigation available</div>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong>KES 12,400</strong>Saved on inputs</div>
+      <div class="hero-stat"><strong>Season 3</strong>Active</div>
+      <div class="hero-stat"><strong>Eligible</strong>Financing</div>
+    </div>
+  </div>
+  <div class="banner" style="background:var(--amber-100);">
+    <div class="dot" style="background:var(--amber-400);"></div>
+    <div style="flex:1;">
+      <div style="font-size:13px;font-weight:500;color:var(--amber-600);">Planting window opens in 6 days</div>
+      <div style="font-size:11px;color:var(--amber-600);opacity:0.8;margin-top:1px;">Rains expected Mar 18–22 · AI recommends 3 crops for your plot</div>
+    </div>
+  </div>
+  <div class="section-title">Your pillars</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showFarmerScreen('f-crop-rec')">
+      <div style="font-size:22px;margin-bottom:7px;">🌱</div>
+      <div style="font-size:13px;font-weight:500;">Crop Advisor</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">AI recommends best crops</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showFarmerScreen('f-diagnostics')">
+      <div style="font-size:22px;margin-bottom:7px;">📷</div>
+      <div style="font-size:13px;font-weight:500;">AI Diagnostics</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Scan &amp; diagnose your crop</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showFarmerScreen('f-groupbuy')">
+      <div style="font-size:22px;margin-bottom:7px;">🤝</div>
+      <div style="font-size:13px;font-weight:500;">Group Buying</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Bulk inputs via Chama</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showFarmerScreen('f-market')">
+      <div style="font-size:22px;margin-bottom:7px;">📦</div>
+      <div style="font-size:13px;font-weight:500;">Market Matching</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Find buyers for your harvest</div>
+    </div>
+  </div>
+  <div class="section-title">Season 3 journey</div>
+  <div class="card">
+    <div class="timeline">
+      <div class="tl-step"><div class="tl-dot done"></div><div class="tl-label">Onboarded via Chama</div><div class="tl-detail">Feb 3 · Verified by Chama leader</div></div>
+      <div class="tl-step"><div class="tl-dot done"></div><div class="tl-label">Farm profile set up</div><div class="tl-detail">1.8 ha · Water source: Rain + Irrigation · Budget KES 18,000</div></div>
+      <div class="tl-step"><div class="tl-dot done"></div><div class="tl-label">Crop recommendations received</div><div class="tl-detail">AI recommended 3 crops · You selected Shangi Potato</div></div>
+      <div class="tl-step"><div class="tl-dot current"></div><div class="tl-label">Awaiting planting window</div><div class="tl-detail">Rains forecast Mar 18–22</div></div>
+      <div class="tl-step"><div class="tl-dot pending"></div><div class="tl-label">Input financing activation</div><div class="tl-detail">Pre-approved · Activates at planting</div></div>
+      <div class="tl-step"><div class="tl-dot pending"></div><div class="tl-label">Market matching</div><div class="tl-detail">2 buyers matched to your harvest</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- F: CROP ADVISOR -->
+<div class="screen" id="f-crop-rec">
+  <div class="section-title" style="margin-top:0;">Tell us about your farm</div>
+  <div class="card">
+    <label class="form-label">Water source</label>
+    <select id="water-source" onchange="updateRec()">
+      <option value="rain">Rainfed only</option>
+      <option value="irrigation" selected>Irrigation available</option>
+      <option value="both">Both (Rain + Irrigation)</option>
+    </select>
+    <label class="form-label">Your location / region</label>
+    <select id="farm-region" onchange="updateRec()">
+      <option value="nyandarua" selected>Nyandarua</option>
+      <option value="muranga">Murang'a</option>
+      <option value="kirinyaga">Kirinyaga</option>
+      <option value="nakuru">Nakuru</option>
+    </select>
+    <label class="form-label">Farm size (ha)</label>
+    <select id="farm-size" onchange="updateRec()">
+      <option value="small">0.5 – 1 ha</option>
+      <option value="medium" selected>1 – 2 ha</option>
+      <option value="large">2 – 5 ha</option>
+    </select>
+    <label class="form-label">Budget</label>
+    <select id="farm-budget" onchange="updateRec()">
+      <option value="low">Under KES 10,000</option>
+      <option value="mid" selected>KES 10,000 – 25,000</option>
+      <option value="high">Over KES 25,000</option>
+    </select>
+  </div>
+
+  <div class="section-title">AI crop recommendations</div>
+  <div id="rec-note" class="banner" style="background:var(--teal-100);">
+    <div class="dot" style="background:var(--teal-400);"></div>
+    <div style="font-size:12px;color:var(--teal-700);">Based on your location, irrigation availability, and current market demand</div>
+  </div>
+
+  <div id="crop-recs"></div>
+  <div id="irrigation-tip"></div>
+</div>
+
+<!-- F: AI DIAGNOSTICS -->
+<div class="screen" id="f-diagnostics">
+  <div style="border:2px dashed var(--border);border-radius:13px;padding:2rem 1rem;text-align:center;background:var(--surface);cursor:pointer;margin-bottom:12px;" onclick="showDiag()">
+    <div style="font-size:36px;margin-bottom:8px;">📷</div>
+    <div style="font-size:14px;font-weight:500;">Piga Picha — Scan your crop</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px;">Tap to simulate uploading a photo</div>
+  </div>
+  <div id="diag-result" style="display:none;">
+    <div class="banner" style="background:var(--coral-100);">
+      <div class="dot" style="background:var(--coral-400);"></div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;color:var(--coral-600);">Issue detected · Action required</div>
+        <div style="font-size:11px;color:var(--coral-600);opacity:0.8;">Scan completed · Mar 12, 2026</div>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:13px 14px;background:var(--coral-100);display:flex;align-items:center;gap:11px;">
+        <div style="width:42px;height:42px;background:var(--coral-400);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🍃</div>
+        <div>
+          <div style="font-size:14px;font-weight:500;color:var(--coral-600);">Early Blight (Alternaria solani)</div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--coral-400);margin-top:2px;">92% confidence</div>
+        </div>
+      </div>
+      <div style="padding:13px 14px;border-top:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Confidence breakdown</div>
+        <div class="bar-row"><div class="bar-label">Early blight</div><div class="bar-track"><div class="bar-fill" style="width:92%;background:var(--coral-400);"></div></div><span style="font-size:11px;font-family:var(--mono);color:var(--coral-600);">92%</span></div>
+        <div class="bar-row"><div class="bar-label">Nutrient defic.</div><div class="bar-track"><div class="bar-fill" style="width:6%;background:var(--gray-200);"></div></div><span style="font-size:11px;font-family:var(--mono);color:var(--gray-600);">6%</span></div>
+        <div class="bar-row"><div class="bar-label">Late blight</div><div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--gray-200);"></div></div><span style="font-size:11px;font-family:var(--mono);color:var(--gray-600);">2%</span></div>
+      </div>
+    </div>
+    <div class="section-title">Treatment plan</div>
+    <div class="card">
+      <div class="rec-item"><div class="rec-num" style="background:var(--green-100);color:var(--green-700);">1</div><div class="rec-text">Apply Mancozeb 80WP (2.5g/L) as foliar spray. Cover entire canopy including leaf undersides.</div></div>
+      <div class="rec-item"><div class="rec-num" style="background:var(--green-100);color:var(--green-700);">2</div><div class="rec-text">Remove and destroy infected leaves immediately. Do not compost.</div></div>
+      <div class="rec-item"><div class="rec-num" style="background:var(--green-100);color:var(--green-700);">3</div><div class="rec-text">Repeat spray every 7–10 days for 3 cycles. Avoid spraying in rain.</div></div>
+      <div class="rec-item"><div class="rec-num" style="background:var(--green-100);color:var(--green-700);">4</div><div class="rec-text">Improve plant spacing for airflow. Monitor neighbouring plants for spread.</div></div>
+    </div>
+    <div class="section-title">Nearest supplier</div>
+    <div class="card">
+      <div class="info-row"><div class="info-label">Agri-Shop Nyandarua</div><div class="info-value"><span class="tag tag-green">In stock</span></div></div>
+      <div class="info-row"><div class="info-label">Mancozeb 80WP 1kg</div><div class="info-value">KES 380</div></div>
+      <div class="info-row"><div class="info-label">Distance</div><div class="info-value">3.2 km · Open now</div></div>
+    </div>
+    <button class="btn btn-soft" onclick="showFarmerScreen('f-groupbuy')">Order via Group Buying →</button>
+    <button class="btn btn-outline" onclick="hideDiag()">Scan another ↺</button>
+  </div>
+</div>
+
+<!-- F: GROUP BUYING (farmer view — no member details) -->
+<div class="screen" id="f-groupbuy">
+  <div class="section-title" style="margin-top:0;">Your Chama order</div>
+  <div class="card" style="background:var(--amber-100);border-color:var(--amber-200);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <div>
+        <div style="font-size:14px;font-weight:500;color:var(--amber-600);">Season 3 Input Bundle</div>
+        <div style="font-size:11px;color:var(--amber-600);opacity:0.8;margin-top:2px;">Closes March 14 · 2 days left</div>
+      </div>
+      <span class="tag tag-amber">Open</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <div class="progress-bar" style="flex:1;"><div class="progress-fill" style="width:73%;background:var(--amber-400);"></div></div>
+      <div style="font-size:12px;font-weight:500;color:var(--amber-600);">73% funded</div>
+    </div>
+    <div style="font-size:11px;color:var(--amber-600);">Target: KES 200,000 · Closes in 2 days</div>
+  </div>
+
+  <div class="section-title">Your input bundle</div>
+  <div class="card">
+    <div class="info-row"><div class="info-label">Shangi certified seed 50kg</div><div class="info-value">KES 2,800 <span class="tag tag-green">-22%</span></div></div>
+    <div class="info-row"><div class="info-label">DAP fertilizer 50kg</div><div class="info-value">KES 3,100 <span class="tag tag-green">-18%</span></div></div>
+    <div class="info-row"><div class="info-label">CAN fertilizer 50kg</div><div class="info-value">KES 2,400 <span class="tag tag-green">-15%</span></div></div>
+    <div class="info-row"><div class="info-label">Mancozeb spray 5kg</div><div class="info-value">KES 1,600 <span class="tag tag-green">-20%</span></div></div>
+    <div class="info-row" style="padding-top:12px;">
+      <div style="font-size:13px;font-weight:500;">Your total</div>
+      <div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--green-700);">KES 9,900</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:3px;text-align:right;">You save KES 2,700 vs. buying individually</div>
+  </div>
+
+  <div class="section-title">Financing</div>
+  <div class="card">
+    <div class="info-row"><div class="info-label">Status</div><div class="info-value"><span class="tag tag-green">Financing eligible</span></div></div>
+    <div class="info-row"><div class="info-label">Pre-approved amount</div><div class="info-value" style="color:var(--green-700);">KES 12,000</div></div>
+    <div class="info-row"><div class="info-label">Interest rate</div><div class="info-value">8% seasonal</div></div>
+    <div class="info-row"><div class="info-label">Repayment</div><div class="info-value">From harvest proceeds</div></div>
+    <div class="info-row"><div class="info-label">Based on</div><div class="info-value" style="max-width:65%;">Payment history, platform activity, yield records</div></div>
+  </div>
+
+  <div class="alert-box" style="background:var(--blue-100);">
+    <div style="font-size:16px;flex-shrink:0;">ℹ️</div>
+    <div style="font-size:12px;color:var(--blue-600);line-height:1.5;">Group progress and individual member details are managed by your Chama leader. You will be notified when the order closes.</div>
+  </div>
+
+  <button class="btn btn-green">Confirm my order · KES 9,900</button>
+  <button class="btn btn-outline">Pay with M-Pesa →</button>
+</div>
+
+<!-- F: MARKET MATCHING -->
+<div class="screen" id="f-market">
+  <div class="section-title" style="margin-top:0;">Market matching</div>
+  <div class="sub-tabs">
+    <div class="sub-tab active" id="st-future" onclick="switchSubTab('future')">Future demand</div>
+    <div class="sub-tab" id="st-immediate" onclick="switchSubTab('immediate')">Immediate demand</div>
+    <div class="sub-tab" id="st-transport" onclick="switchSubTab('transport')">Bulk transport</div>
+  </div>
+
+  <!-- Future demand -->
+  <div class="sub-panel active" id="sp-future">
+    <div class="alert-box" style="background:var(--teal-100);">
+      <div style="font-size:16px;flex-shrink:0;">💡</div>
+      <div style="font-size:12px;color:var(--teal-700);line-height:1.5;">Lock in buyers before you harvest. Forward contracts protect you from price crashes at season end.</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Your estimated harvest: <strong style="color:var(--text);">21–27 tonnes · June 10–17, 2026</strong></div>
+
+    <div class="match-card">
+      <div class="match-top">
+        <div><div class="match-name">Naivas Supermarket · Nyahururu</div><div class="match-type">Supermarket · Grade A · Forward contract</div></div>
+        <div style="text-align:right;"><div class="match-price">KES 9.50</div><div class="match-unit">per kg</div></div>
+      </div>
+      <div class="match-meta">
+        <div class="meta-item">Volume: <strong>8,000 kg</strong></div>
+        <div class="meta-item">Delivery: <strong>June 15</strong></div>
+        <div class="meta-item">Payment: <strong>14 days</strong></div>
+      </div>
+      <button class="btn btn-green" style="margin-top:11px;">Request forward contract</button>
+    </div>
+
+    <div class="match-card">
+      <div class="match-top">
+        <div><div class="match-name">Kenya Crisps Ltd · Processor</div><div class="match-type">Food processor · Bulk · Forward contract</div></div>
+        <div style="text-align:right;"><div class="match-price">KES 7.20</div><div class="match-unit">per kg</div></div>
+      </div>
+      <div class="match-meta">
+        <div class="meta-item">Volume: <strong>15,000 kg</strong></div>
+        <div class="meta-item">Grading: <strong>Mixed OK</strong></div>
+        <div class="meta-item">Payment: <strong>7 days</strong></div>
+      </div>
+      <button class="btn btn-outline" style="margin-top:11px;">View contract terms</button>
+    </div>
+
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:10px;">Price intelligence</div>
+      <div class="info-row"><div class="info-label">Nairobi wholesale today</div><div class="info-value">KES 8.20/kg <span class="tag tag-green">↑ 14%</span></div></div>
+      <div class="info-row"><div class="info-label">Nyandarua farmgate</div><div class="info-value">KES 5.80/kg</div></div>
+      <div class="info-row"><div class="info-label">Your break-even</div><div class="info-value">KES 4.10/kg</div></div>
+      <div class="info-row"><div class="info-label">Harvest season outlook</div><div class="info-value"><span class="tag tag-amber">Prices may dip</span></div></div>
+    </div>
+  </div>
+
+  <!-- Immediate demand -->
+  <div class="sub-panel" id="sp-immediate">
+    <div class="banner" style="background:var(--green-100);">
+      <div class="dot" style="background:var(--green-600);"></div>
+      <div style="font-size:12px;color:var(--green-700);">You have crops available now? Post them and get matched to ready buyers within 24 hours.</div>
+    </div>
+    <button class="btn btn-green" style="margin-bottom:14px;">Post available crops now</button>
+
+    <div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:8px;">Active buyer requests near you</div>
+    <div class="match-card">
+      <div class="match-top">
+        <div><div class="match-name">Nakumatt Wholesale · Naivasha</div><div class="match-type">Wholesaler · Immediate purchase</div></div>
+        <div style="text-align:right;"><div class="match-price">KES 6.80</div><div class="match-unit">per kg</div></div>
+      </div>
+      <div class="match-meta">
+        <div class="meta-item">Needs: <strong>5,000 kg potatoes</strong></div>
+        <div class="meta-item">By: <strong>Mar 18</strong></div>
+        <div class="meta-item">Payment: <strong>Cash on delivery</strong></div>
+      </div>
+      <button class="btn btn-soft" style="margin-top:11px;">Express interest</button>
+    </div>
+    <div class="match-card">
+      <div class="match-top">
+        <div><div class="match-name">Eastmatt Supermarket · Nyahururu</div><div class="match-type">Supermarket · Spot purchase</div></div>
+        <div style="text-align:right;"><div class="match-price">KES 7.50</div><div class="match-unit">per kg</div></div>
+      </div>
+      <div class="match-meta">
+        <div class="meta-item">Needs: <strong>2,000 kg tomatoes</strong></div>
+        <div class="meta-item">By: <strong>Mar 15</strong></div>
+        <div class="meta-item">Grade: <strong>A or B</strong></div>
+      </div>
+      <button class="btn btn-soft" style="margin-top:11px;">Express interest</button>
+    </div>
+  </div>
+
+  <!-- Bulk transport -->
+  <div class="sub-panel" id="sp-transport">
+    <div class="alert-box" style="background:var(--purple-100);">
+      <div style="font-size:16px;flex-shrink:0;">🚛</div>
+      <div style="font-size:12px;color:var(--purple-700);line-height:1.5;">Pool transport with other Chama farmers heading to the same market. Split the cost, reduce post-harvest losses.</div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Active transport pool — Nyandarua → Nairobi</div>
+      <div class="info-row"><div class="info-label">Departure</div><div class="info-value">June 16, 2026 · 5:00 AM</div></div>
+      <div class="info-row"><div class="info-label">Truck capacity</div><div class="info-value">10 tonnes</div></div>
+      <div class="info-row"><div class="info-label">Slots filled</div><div class="info-value">6.2 t of 10 t <span class="tag tag-amber">62%</span></div></div>
+      <div class="info-row"><div class="info-label">Your cost estimate</div><div class="info-value" style="color:var(--green-700);">KES 1,800 per tonne</div></div>
+      <div class="info-row"><div class="info-label">vs. hiring individually</div><div class="info-value"><span class="tag tag-green">Save ~KES 3,400</span></div></div>
+    </div>
+    <div class="progress-bar" style="margin-bottom:6px;"><div class="progress-fill" style="width:62%;background:var(--teal-400);"></div></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">3.8 tonnes remaining · 4 farmers already joined</div>
+    <button class="btn btn-green">Join this transport pool</button>
+  </div>
+</div>
+
+
+<!-- ===================== CHAMA LEADER SCREENS ===================== -->
+
+<!-- L: HOME -->
+<div class="screen" id="l-home">
+  <div class="hero-amber">
+    <div class="hero-label">Chama leader</div>
+    <div class="hero-name">Margaret Njoki</div>
+    <div class="hero-sub">Nyandarua Farmers Chama · 11 members · Season 3</div>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong style="color:var(--amber-200);">11</strong>Members</div>
+      <div class="hero-stat"><strong style="color:var(--amber-200);">8</strong>Committed</div>
+      <div class="hero-stat"><strong style="color:var(--amber-200);">KES 146k</strong>Collected</div>
+    </div>
+  </div>
+  <div class="banner" style="background:var(--amber-100);">
+    <div class="dot" style="background:var(--amber-400);"></div>
+    <div style="flex:1;">
+      <div style="font-size:13px;font-weight:500;color:var(--amber-600);">3 members yet to commit · Order closes in 2 days</div>
+      <div style="font-size:11px;color:var(--amber-600);opacity:0.8;margin-top:1px;">Send reminders to Samuel, Alice, and Daniel</div>
+    </div>
+  </div>
+  <div class="section-title">Quick actions</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showLeaderScreen('l-members')">
+      <div style="font-size:22px;margin-bottom:7px;">👥</div>
+      <div style="font-size:13px;font-weight:500;">Members</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">View all, commitments &amp; details</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showLeaderScreen('l-order')">
+      <div style="font-size:22px;margin-bottom:7px;">📋</div>
+      <div style="font-size:13px;font-weight:500;">Group Order</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Track &amp; manage bulk order</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showLeaderScreen('l-financing')">
+      <div style="font-size:22px;margin-bottom:7px;">💳</div>
+      <div style="font-size:13px;font-weight:500;">Financing</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Member eligibility &amp; loans</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showLeaderScreen('l-market')">
+      <div style="font-size:22px;margin-bottom:7px;">📦</div>
+      <div style="font-size:13px;font-weight:500;">Market Matching</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Chama-level buyer deals</div>
+    </div>
+  </div>
+</div>
+
+<!-- L: MEMBERS -->
+<div class="screen" id="l-members">
+  <div class="section-title" style="margin-top:0;">All Chama members</div>
+  <div class="banner" style="background:var(--amber-100);">
+    <div class="dot" style="background:var(--amber-400);"></div>
+    <div style="font-size:12px;color:var(--amber-600);">8 of 11 committed · KES 146,200 of KES 200,000 target</div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="data-table">
+      <thead><tr><th>Member</th><th>Farm</th><th>Status</th><th>Amount</th></tr></thead>
+      <tbody>
+        <tr><td><div style="font-weight:500;">Jane Wanjiru</div><div style="font-size:10px;color:var(--muted);">Potatoes · 1.8ha</div></td><td>1.8 ha</td><td><span class="tag tag-green">Committed</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--green-700);">9,900</td></tr>
+        <tr><td><div style="font-weight:500;">Peter Mwangi</div><div style="font-size:10px;color:var(--muted);">Tomatoes · 2.1ha</div></td><td>2.1 ha</td><td><span class="tag tag-green">Committed</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--green-700);">11,200</td></tr>
+        <tr><td><div style="font-weight:500;">Grace Kamau</div><div style="font-size:10px;color:var(--muted);">Potatoes · 1.2ha</div></td><td>1.2 ha</td><td><span class="tag tag-green">Committed</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--green-700);">7,400</td></tr>
+        <tr><td><div style="font-weight:500;">Alice Muthoni</div><div style="font-size:10px;color:var(--muted);">Onions · 1.0ha</div></td><td>1.0 ha</td><td><span class="tag tag-green">Committed</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--green-700);">6,800</td></tr>
+        <tr><td><div style="font-weight:500;">Samuel Mutua</div><div style="font-size:10px;color:var(--muted);">Potatoes · 2.4ha</div></td><td>2.4 ha</td><td><span class="tag tag-coral">Pending</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--coral-400);">—</td></tr>
+        <tr><td><div style="font-weight:500;">Daniel Kariuki</div><div style="font-size:10px;color:var(--muted);">Tomatoes · 0.8ha</div></td><td>0.8 ha</td><td><span class="tag tag-coral">Pending</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--coral-400);">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <button class="btn btn-amber" style="margin-top:4px;">Send reminder to pending members</button>
+</div>
+
+<!-- L: GROUP ORDER -->
+<div class="screen" id="l-order">
+  <div class="section-title" style="margin-top:0;">Season 3 — Group order</div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-lbl">Total collected</div><div class="stat-val" style="color:var(--amber-600);">146,200</div><div class="stat-sub">KES · 8 members</div></div>
+    <div class="stat-box"><div class="stat-lbl">Target</div><div class="stat-val">200,000</div><div class="stat-sub">KES · 11 members</div></div>
+    <div class="stat-box"><div class="stat-lbl">Days to close</div><div class="stat-val" style="color:var(--coral-400);">2</div><div class="stat-sub">Deadline Mar 14</div></div>
+    <div class="stat-box"><div class="stat-lbl">Avg. saving</div><div class="stat-val" style="color:var(--green-700);">19%</div><div class="stat-sub">vs. retail</div></div>
+  </div>
+  <div class="progress-bar" style="margin-bottom:6px;"><div class="progress-fill" style="width:73%;background:var(--amber-400);"></div></div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">73% funded · KES 53,800 still needed</div>
+
+  <div class="section-title">Consolidated order items</div>
+  <div class="card">
+    <div class="info-row"><div class="info-label">Shangi certified seed</div><div class="info-value">580 kg · KES 32,480</div></div>
+    <div class="info-row"><div class="info-label">DAP fertilizer</div><div class="info-value">480 kg · KES 29,760</div></div>
+    <div class="info-row"><div class="info-label">CAN fertilizer</div><div class="info-value">440 kg · KES 21,120</div></div>
+    <div class="info-row"><div class="info-label">Mancozeb spray</div><div class="info-value">42 kg · KES 13,440</div></div>
+    <div class="info-row"><div class="info-label" style="font-weight:500;">Total order value</div><div class="info-value" style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--green-700);">KES 96,800</div></div>
+  </div>
+  <button class="btn btn-amber">Confirm &amp; submit to supplier</button>
+  <button class="btn btn-outline">Download order summary</button>
+</div>
+
+<!-- L: FINANCING -->
+<div class="screen" id="l-financing">
+  <div class="section-title" style="margin-top:0;">Member financing eligibility</div>
+  <div class="alert-box" style="background:var(--blue-100);">
+    <div style="font-size:16px;flex-shrink:0;">ℹ️</div>
+    <div style="font-size:12px;color:var(--blue-600);line-height:1.5;">Eligibility is based on platform payment history, platform activity, yield records, and repayment track record — no manual reputation scoring.</div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="data-table">
+      <thead><tr><th>Member</th><th>Eligibility</th><th>Limit</th><th>History</th></tr></thead>
+      <tbody>
+        <tr><td>Jane Wanjiru</td><td><span class="tag tag-green">Eligible</span></td><td style="font-family:var(--mono);color:var(--green-700);">12,000</td><td>3 seasons on-time</td></tr>
+        <tr><td>Peter Mwangi</td><td><span class="tag tag-green">Eligible</span></td><td style="font-family:var(--mono);color:var(--green-700);">15,000</td><td>2 seasons on-time</td></tr>
+        <tr><td>Grace Kamau</td><td><span class="tag tag-green">Eligible</span></td><td style="font-family:var(--mono);color:var(--green-700);">8,000</td><td>1 season on-time</td></tr>
+        <tr><td>Samuel Mutua</td><td><span class="tag tag-amber">Conditional</span></td><td style="font-family:var(--mono);color:var(--amber-600);">5,000</td><td>1 late payment</td></tr>
+        <tr><td>Daniel Kariuki</td><td><span class="tag tag-coral">Ineligible</span></td><td style="font-family:var(--mono);color:var(--gray-400);">—</td><td>New member</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="section-title">Financing factors</div>
+  <div class="card">
+    <div class="rec-item"><div class="rec-num" style="background:var(--teal-100);color:var(--teal-700);">✓</div><div class="rec-text"><strong>Payment history</strong> — Did member pay on time in previous group orders?</div></div>
+    <div class="rec-item"><div class="rec-num" style="background:var(--teal-100);color:var(--teal-700);">✓</div><div class="rec-text"><strong>Platform activity</strong> — Frequency of crop scans, seasonal planning engagement</div></div>
+    <div class="rec-item"><div class="rec-num" style="background:var(--teal-100);color:var(--teal-700);">✓</div><div class="rec-text"><strong>Yield records</strong> — Historical yields entered or confirmed by ambassador</div></div>
+    <div class="rec-item"><div class="rec-num" style="background:var(--teal-100);color:var(--teal-700);">✓</div><div class="rec-text"><strong>Repayment track record</strong> — Previous loan repayments on the platform</div></div>
+  </div>
+</div>
+
+<!-- L: MARKET MATCHING (leader) -->
+<div class="screen" id="l-market">
+  <div class="section-title" style="margin-top:0;">Chama market matching</div>
+  <div class="card" style="background:var(--green-800);">
+    <div style="color:rgba(255,255,255,0.65);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Combined harvest estimate</div>
+    <div style="color:var(--green-200);font-size:26px;font-weight:600;font-family:var(--mono);">186 – 240 tonnes</div>
+    <div style="color:rgba(255,255,255,0.7);font-size:11px;margin-top:3px;">11 farmers · Potatoes, Tomatoes, Onions · June 2026</div>
+  </div>
+  <div class="section-title">Matched bulk buyers</div>
+  <div class="match-card">
+    <div class="match-top">
+      <div><div class="match-name">Naivas Group · Regional buyer</div><div class="match-type">Supermarket chain · Chama-level contract</div></div>
+      <div style="text-align:right;"><div class="match-price">KES 9.20</div><div class="match-unit">per kg potatoes</div></div>
+    </div>
+    <div class="match-meta">
+      <div class="meta-item">Volume: <strong>80,000 kg</strong></div>
+      <div class="meta-item">Delivery: <strong>Coordinated</strong></div>
+      <div class="meta-item">Payment: <strong>14 days</strong></div>
+    </div>
+    <button class="btn btn-amber" style="margin-top:11px;">Negotiate Chama contract</button>
+  </div>
+</div>
+
+
+<!-- ===================== ADMIN SCREENS ===================== -->
+
+<!-- A: DASHBOARD -->
+<div class="screen" id="a-dashboard">
+  <div class="hero-purple">
+    <div class="hero-label">Platform admin</div>
+    <div class="hero-name">Kilimo Co-Pilot</div>
+    <div class="hero-sub">Kenya Pilot · Season 3 · March 2026</div>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong style="color:#CECBF6;">4</strong>Chamas</div>
+      <div class="hero-stat"><strong style="color:#CECBF6;">38</strong>Farmers</div>
+      <div class="hero-stat"><strong style="color:#CECBF6;">KES 1.2M</strong>Input orders</div>
+    </div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-lbl">Active crop scans</div><div class="stat-val" style="color:var(--teal-600);">127</div><div class="stat-sub">This season</div></div>
+    <div class="stat-box"><div class="stat-lbl">Avg. input saving</div><div class="stat-val" style="color:var(--green-700);">19%</div><div class="stat-sub">vs. retail</div></div>
+    <div class="stat-box"><div class="stat-lbl">Financing disbursed</div><div class="stat-val" style="color:var(--amber-600);">KES 284k</div><div class="stat-sub">26 farmers</div></div>
+    <div class="stat-box"><div class="stat-lbl">Buyer matches</div><div class="stat-val" style="color:var(--purple-700);">14</div><div class="stat-sub">This season</div></div>
+  </div>
+  <div class="section-title">Quick actions</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showAdminScreen('a-chamas')">
+      <div style="font-size:22px;margin-bottom:7px;">🏘</div>
+      <div style="font-size:13px;font-weight:500;">All Chamas</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Overview of all groups</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showAdminScreen('a-farmers')">
+      <div style="font-size:22px;margin-bottom:7px;">👤</div>
+      <div style="font-size:13px;font-weight:500;">All Farmers</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Profiles &amp; platform data</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showAdminScreen('a-market-admin')">
+      <div style="font-size:22px;margin-bottom:7px;">🤝</div>
+      <div style="font-size:13px;font-weight:500;">Market Matching</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Manage buyer partnerships</div>
+    </div>
+    <div class="card" style="cursor:pointer;padding:13px;" onclick="showAdminScreen('a-financing')">
+      <div style="font-size:22px;margin-bottom:7px;">🏦</div>
+      <div style="font-size:13px;font-weight:500;">Financing</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">Lending partner reports</div>
+    </div>
+  </div>
+</div>
+
+<!-- A: CHAMAS -->
+<div class="screen" id="a-chamas">
+  <div class="section-title" style="margin-top:0;">All Chamas — Season 3</div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="data-table">
+      <thead><tr><th>Chama</th><th>Region</th><th>Members</th><th>Order</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td style="font-weight:500;">Nyandarua FC</td><td>Nyandarua</td><td>11</td><td style="font-family:var(--mono);font-size:11px;">146,200</td><td><span class="tag tag-amber">Open</span></td></tr>
+        <tr><td style="font-weight:500;">Murang'a Avocado</td><td>Murang'a</td><td>8</td><td style="font-family:var(--mono);font-size:11px;">98,400</td><td><span class="tag tag-green">Confirmed</span></td></tr>
+        <tr><td style="font-weight:500;">Kirinyaga Tomato</td><td>Kirinyaga</td><td>12</td><td style="font-family:var(--mono);font-size:11px;">182,000</td><td><span class="tag tag-green">Confirmed</span></td></tr>
+        <tr><td style="font-weight:500;">Nakuru Onion</td><td>Nakuru</td><td>7</td><td style="font-family:var(--mono);font-size:11px;">64,800</td><td><span class="tag tag-coral">Pending</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- A: FARMERS -->
+<div class="screen" id="a-farmers">
+  <div class="section-title" style="margin-top:0;">All farmers</div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="data-table">
+      <thead><tr><th>Farmer</th><th>Chama</th><th>Crop</th><th>Water</th><th>Financing</th></tr></thead>
+      <tbody>
+        <tr><td style="font-weight:500;">Jane Wanjiru</td><td>Nyandarua</td><td>Potatoes</td><td><span class="tag tag-blue">Irrigation</span></td><td><span class="tag tag-green">Eligible</span></td></tr>
+        <tr><td style="font-weight:500;">Peter Mwangi</td><td>Nyandarua</td><td>Tomatoes</td><td><span class="tag tag-teal">Rain</span></td><td><span class="tag tag-green">Eligible</span></td></tr>
+        <tr><td style="font-weight:500;">Grace Kamau</td><td>Nyandarua</td><td>Potatoes</td><td><span class="tag tag-teal">Rain</span></td><td><span class="tag tag-green">Eligible</span></td></tr>
+        <tr><td style="font-weight:500;">Samuel Mutua</td><td>Nyandarua</td><td>Potatoes</td><td><span class="tag tag-blue">Irrigation</span></td><td><span class="tag tag-amber">Conditional</span></td></tr>
+        <tr><td style="font-weight:500;">Daniel Kariuki</td><td>Nyandarua</td><td>Tomatoes</td><td><span class="tag tag-teal">Rain</span></td><td><span class="tag tag-coral">Ineligible</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- A: MARKET ADMIN -->
+<div class="screen" id="a-market-admin">
+  <div class="section-title" style="margin-top:0;">Market matching — platform overview</div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-lbl">Forward contracts</div><div class="stat-val" style="color:var(--purple-700);">9</div><div class="stat-sub">Active this season</div></div>
+    <div class="stat-box"><div class="stat-lbl">Immediate matches</div><div class="stat-val" style="color:var(--green-700);">5</div><div class="stat-sub">Last 30 days</div></div>
+    <div class="stat-box"><div class="stat-lbl">Transport pools</div><div class="stat-val" style="color:var(--teal-600);">3</div><div class="stat-sub">Active routes</div></div>
+    <div class="stat-box"><div class="stat-lbl">Registered buyers</div><div class="stat-val" style="color:var(--amber-600);">22</div><div class="stat-sub">Across all crops</div></div>
+  </div>
+  <div class="section-title">Buyer pipeline</div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="data-table">
+      <thead><tr><th>Buyer</th><th>Type</th><th>Crop</th><th>Volume (kg)</th><th>Mode</th></tr></thead>
+      <tbody>
+        <tr><td style="font-weight:500;">Naivas Group</td><td>Supermarket</td><td>Potatoes</td><td style="font-family:var(--mono);">80,000</td><td><span class="tag tag-blue">Future</span></td></tr>
+        <tr><td style="font-weight:500;">Kenya Crisps</td><td>Processor</td><td>Potatoes</td><td style="font-family:var(--mono);">60,000</td><td><span class="tag tag-blue">Future</span></td></tr>
+        <tr><td style="font-weight:500;">Nakumatt W/sale</td><td>Wholesaler</td><td>Potatoes</td><td style="font-family:var(--mono);">5,000</td><td><span class="tag tag-green">Immediate</span></td></tr>
+        <tr><td style="font-weight:500;">Eastmatt</td><td>Supermarket</td><td>Tomatoes</td><td style="font-family:var(--mono);">2,000</td><td><span class="tag tag-green">Immediate</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <button class="btn btn-purple" style="margin-top:4px;">Add new buyer</button>
+</div>
+
+<!-- A: FINANCING ADMIN -->
+<div class="screen" id="a-financing">
+  <div class="section-title" style="margin-top:0;">Financing — lender report</div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-lbl">Total disbursed</div><div class="stat-val" style="color:var(--amber-600);">KES 284k</div><div class="stat-sub">26 farmers</div></div>
+    <div class="stat-box"><div class="stat-lbl">Repayment rate</div><div class="stat-val" style="color:var(--green-700);">94%</div><div class="stat-sub">Previous seasons</div></div>
+    <div class="stat-box"><div class="stat-lbl">Avg. loan size</div><div class="stat-val">10,923</div><div class="stat-sub">KES</div></div>
+    <div class="stat-box"><div class="stat-lbl">Default rate</div><div class="stat-val" style="color:var(--coral-400);">2.1%</div><div class="stat-sub">Below industry avg</div></div>
+  </div>
+  <div class="section-title">Eligibility breakdown</div>
+  <div class="card">
+    <div class="bar-row"><div class="bar-label">Eligible</div><div class="bar-track"><div class="bar-fill" style="width:68%;background:var(--green-400);"></div></div><span style="font-size:11px;font-family:var(--mono);">26 farmers</span></div>
+    <div class="bar-row"><div class="bar-label">Conditional</div><div class="bar-track"><div class="bar-fill" style="width:13%;background:var(--amber-400);"></div></div><span style="font-size:11px;font-family:var(--mono);">5 farmers</span></div>
+    <div class="bar-row"><div class="bar-label">Ineligible</div><div class="bar-track"><div class="bar-fill" style="width:18%;background:var(--coral-400);"></div></div><span style="font-size:11px;font-family:var(--mono);">7 farmers</span></div>
+  </div>
+</div>
+
+</div><!-- end app -->
+
+<script>
+// ---- STATE ----
+let currentRole = 'farmer';
+
+const ROLES = {
+  farmer: {
+    color: 'var(--green-700)', badgeBg: 'var(--green-100)', badgeColor: 'var(--green-700)',
+    label: 'Farmer', name: 'Jane Wanjiru', sub: 'Nyandarua · Farmer',
+    tabs: [
+      {id:'f-home',label:'Home'},{id:'f-crop-rec',label:'Crop Advisor'},
+      {id:'f-diagnostics',label:'AI Diagnostics'},{id:'f-groupbuy',label:'Group Buying'},
+      {id:'f-market',label:'Market Matching'}
+    ],
+    defaultScreen: 'f-home'
+  },
+  leader: {
+    color: 'var(--amber-600)', badgeBg: 'var(--amber-100)', badgeColor: 'var(--amber-600)',
+    label: 'Chama Leader', name: 'Margaret Njoki', sub: 'Nyandarua Chama · Leader',
+    tabs: [
+      {id:'l-home',label:'Overview'},{id:'l-members',label:'Members'},
+      {id:'l-order',label:'Group Order'},{id:'l-financing',label:'Financing'},{id:'l-market',label:'Market Matching'}
+    ],
+    defaultScreen: 'l-home'
+  },
+  admin: {
+    color: 'var(--purple-700)', badgeBg: 'var(--purple-100)', badgeColor: 'var(--purple-700)',
+    label: 'Admin', name: 'Kilimo Co-Pilot', sub: 'Platform Admin · Kenya Pilot',
+    tabs: [
+      {id:'a-dashboard',label:'Dashboard'},{id:'a-chamas',label:'Chamas'},
+      {id:'a-farmers',label:'Farmers'},{id:'a-market-admin',label:'Market Matching'},{id:'a-financing',label:'Financing'}
+    ],
+    defaultScreen: 'a-dashboard'
+  }
+};
+
+function setRole(role) {
+  currentRole = role;
+  const r = ROLES[role];
+
+  // role buttons
+  ['farmer','leader','admin'].forEach(k => {
+    const btn = document.getElementById('rb-'+k);
+    btn.className = 'role-btn ' + (k === role ? 'active-'+k : 'inactive');
+  });
+
+  // topbar
+  document.getElementById('logo-icon').style.background = r.color;
+  document.getElementById('topbar-name').textContent = r.name;
+  document.getElementById('topbar-sub').textContent = r.sub;
+  const badge = document.getElementById('role-badge');
+  badge.textContent = r.label;
+  badge.style.background = r.badgeBg;
+  badge.style.color = r.badgeColor;
+
+  // nav tabs
+  const nav = document.getElementById('nav-tabs');
+  nav.innerHTML = '';
+  r.tabs.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-tab';
+    btn.textContent = t.label;
+    btn.dataset.screen = t.id;
+    btn.onclick = () => showScreen(t.id);
+    nav.appendChild(btn);
+  });
+
+  showScreen(r.defaultScreen);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const r = ROLES[currentRole];
+  document.querySelectorAll('.nav-tab').forEach(btn => {
+    btn.classList.remove('active-farmer','active-leader','active-admin');
+    if (btn.dataset.screen === id) btn.classList.add('active-'+currentRole);
+  });
+  window.scrollTo(0,0);
+}
+
+function showFarmerScreen(id) { showScreen(id); }
+function showLeaderScreen(id) { showScreen(id); }
+function showAdminScreen(id)  { showScreen(id); }
+
+// Sub tabs (market matching)
+function switchSubTab(tab) {
+  ['future','immediate','transport'].forEach(t => {
+    document.getElementById('st-'+t).className = 'sub-tab' + (t===tab?' active':'');
+    document.getElementById('sp-'+t).className = 'sub-panel' + (t===tab?' active':'');
+  });
+}
+
+// Diagnostics
+function showDiag() {
+  document.getElementById('diag-result').style.display = 'block';
+  document.querySelector('[onclick="showDiag()"]').style.display = 'none';
+}
+function hideDiag() {
+  document.getElementById('diag-result').style.display = 'none';
+  document.querySelector('[onclick="showDiag()"]').style.display = 'block';
+}
+
+// ---- CROP RECOMMENDATIONS ----
+const CROPS = {
+  nyandarua: {
+    rain: [
+      {name:'Shangi Potato',score:94,color:'var(--green-700)',ring:'var(--green-100)',profit:88,climate:90,demand:92,note:'Best fit for Nyandarua altitude. High blight pressure — budget for fungicide.'},
+      {name:'French Beans',score:78,color:'var(--teal-700)',ring:'var(--teal-100)',profit:72,climate:80,demand:75,note:'Export market available. Requires careful post-harvest handling.'},
+      {name:'Kale (Sukuma)',score:65,color:'var(--amber-600)',ring:'var(--amber-100)',profit:58,climate:75,demand:62,note:'Lower value but fast turnover. Good as secondary crop.'},
+    ],
+    irrigation: [
+      {name:'Tomatoes (Kilele F1)',score:96,color:'var(--green-700)',ring:'var(--green-100)',profit:94,climate:88,demand:96,note:'Irrigation unlocks year-round production. High Nairobi demand. Manage Late Blight.'},
+      {name:'Shangi Potato',score:91,color:'var(--teal-700)',ring:'var(--teal-100)',profit:88,climate:90,demand:90,note:'Irrigation allows off-season planting when prices are 30% higher.'},
+      {name:'Capsicum (Pilipili)',score:82,color:'var(--amber-600)',ring:'var(--amber-100)',profit:85,climate:75,demand:82,note:'Strong export and hotel demand. Needs drip irrigation for best yields.'},
+    ],
+    both: [
+      {name:'Tomatoes (Kilele F1)',score:97,color:'var(--green-700)',ring:'var(--green-100)',profit:95,climate:90,demand:96,note:'Best of both worlds. Start rain-fed, supplement with irrigation in dry spells.'},
+      {name:'Shangi Potato',score:93,color:'var(--teal-700)',ring:'var(--teal-100)',profit:90,climate:92,demand:90,note:'Rain-fed with irrigation backup drastically reduces drought risk.'},
+      {name:'Broccoli',score:79,color:'var(--amber-600)',ring:'var(--amber-100)',profit:82,climate:72,demand:80,note:'Export and supermarket demand growing. Cool climate is an advantage.'},
+    ],
+  },
+  muranga: {
+    irrigation: [
+      {name:'Avocado (Hass)',score:97,color:'var(--green-700)',ring:'var(--green-100)',profit:96,climate:95,demand:98,note:"Murang'a's signature crop. Strong export demand. 3–4 year investment horizon."},
+      {name:'Passion Fruit',score:85,color:'var(--teal-700)',ring:'var(--teal-100)',profit:83,climate:88,demand:84,note:'Faster returns than avocado. Juice processing demand locally and regionally.'},
+      {name:'Macadamia',score:80,color:'var(--amber-600)',ring:'var(--amber-100)',profit:85,climate:78,demand:79,note:'Long-term investment, very high ROI. Export market very strong.'},
+    ],
+    rain: [
+      {name:'Avocado (Hass)',score:88,color:'var(--green-700)',ring:'var(--green-100)',profit:90,climate:82,demand:98,note:'Rain-fed viable in Murang\'a but irrigation boosts yield significantly.'},
+      {name:'Maize',score:70,color:'var(--teal-700)',ring:'var(--teal-100)',profit:62,climate:78,demand:68,note:'Reliable staple but lower margins. Consider intercropping with legumes.'},
+      {name:'Coffee',score:75,color:'var(--amber-600)',ring:'var(--amber-100)',profit:72,climate:80,demand:74,note:'Heritage crop for Murang\'a. Direct-trade premiums available through cooperatives.'},
+    ],
+    both: [
+      {name:'Avocado (Hass)',score:98,color:'var(--green-700)',ring:'var(--green-100)',profit:96,climate:95,demand:98,note:'Top recommendation. Irrigation supplementation boosts yields by 35%.'},
+      {name:'Passion Fruit',score:87,color:'var(--teal-700)',ring:'var(--teal-100)',profit:83,climate:88,demand:84,note:'Fast returns. Well-suited to Murang\'a climate with supplemental irrigation.'},
+      {name:'Macadamia',score:82,color:'var(--amber-600)',ring:'var(--amber-100)',profit:85,climate:80,demand:79,note:'Long-term wealth crop. Pair with short-term crops in early years.'},
+    ],
+  },
+  kirinyaga: {
+    rain: [
+      {name:'Tomatoes (Rambo)',score:93,color:'var(--green-700)',ring:'var(--green-100)',profit:91,climate:90,demand:94,note:'Kirinyaga climate ideal for tomatoes. Strong local and Nairobi market.'},
+      {name:'Chilli Pepper',score:80,color:'var(--teal-700)',ring:'var(--teal-100)',profit:82,climate:78,demand:79,note:'Growing export demand. Dries well, extending marketing window.'},
+      {name:'Maize',score:72,color:'var(--amber-600)',ring:'var(--amber-100)',profit:65,climate:80,demand:70,note:'Staple crop, reliable demand. Best intercropped with beans.'},
+    ],
+    irrigation: [
+      {name:'Tomatoes (Kilele F1)',score:97,color:'var(--green-700)',ring:'var(--green-100)',profit:95,climate:92,demand:96,note:'Year-round production possible with irrigation. Very strong margins.'},
+      {name:'Capsicum',score:88,color:'var(--teal-700)',ring:'var(--teal-100)',profit:86,climate:85,demand:88,note:'Hotel and export demand strong. Drip irrigation recommended.'},
+      {name:'Baby Corn',score:79,color:'var(--amber-600)',ring:'var(--amber-100)',profit:76,climate:80,demand:78,note:'Export and supermarket niche. Short cycle, multiple harvests per year.'},
+    ],
+    both: [
+      {name:'Tomatoes (Kilele F1)',score:98,color:'var(--green-700)',ring:'var(--green-100)',profit:96,climate:93,demand:97,note:'Best crop for your conditions. Manage disease pressure carefully.'},
+      {name:'Capsicum',score:89,color:'var(--teal-700)',ring:'var(--teal-100)',profit:87,climate:86,demand:88,note:'Complement tomatoes with capsicum for buyer diversification.'},
+      {name:'Chilli Pepper',score:82,color:'var(--amber-600)',ring:'var(--amber-100)',profit:82,climate:80,demand:80,note:'Drought-tolerant. Good backup when tomato prices dip.'},
+    ],
+  },
+  nakuru: {
+    rain: [
+      {name:'Onions (Red Creole)',score:89,color:'var(--green-700)',ring:'var(--green-100)',profit:87,climate:88,demand:90,note:'Nakuru is Kenya\'s onion belt. Strong Nairobi demand, consistent pricing.'},
+      {name:'Wheat',score:75,color:'var(--teal-700)',ring:'var(--teal-100)',profit:68,climate:82,demand:74,note:'Mechanisation lowers costs. Flour milling partnerships available.'},
+      {name:'Sunflower',score:70,color:'var(--amber-600)',ring:'var(--amber-100)',profit:66,climate:75,demand:68,note:'Drought-tolerant. Oil processing demand steady.'},
+    ],
+    irrigation: [
+      {name:'Onions (Texas Grano)',score:95,color:'var(--green-700)',ring:'var(--green-100)',profit:93,climate:90,demand:94,note:'Irrigation enables off-season production at premium prices.'},
+      {name:'Tomatoes (Rio Grande)',score:88,color:'var(--teal-700)',ring:'var(--teal-100)',profit:87,climate:85,demand:90,note:'Strong Nakuru and Nairobi wholesale market. High volume potential.'},
+      {name:'Capsicum',score:82,color:'var(--amber-600)',ring:'var(--amber-100)',profit:80,climate:83,demand:82,note:'Good complement to onion rotation. Export and hotel demand.'},
+    ],
+    both: [
+      {name:'Onions (Texas Grano)',score:96,color:'var(--green-700)',ring:'var(--green-100)',profit:94,climate:91,demand:95,note:'Best option for Nakuru with water access. Year-round supply possible.'},
+      {name:'Tomatoes (Rio Grande)',score:90,color:'var(--teal-700)',ring:'var(--teal-100)',profit:88,climate:86,demand:91,note:'Combine with onions for crop rotation and income diversification.'},
+      {name:'Potatoes',score:83,color:'var(--amber-600)',ring:'var(--amber-100)',profit:81,climate:84,demand:83,note:'Cooler Nakuru zones suit potatoes well. Good backup crop.'},
+    ],
+  }
+};
+
+function updateRec() {
+  const region = document.getElementById('farm-region').value;
+  const water  = document.getElementById('water-source').value;
+  const size   = document.getElementById('farm-size').value;
+  const budget = document.getElementById('farm-budget').value;
+
+  const key = water === 'both' ? 'both' : (water === 'irrigation' ? 'irrigation' : 'rain');
+  const crops = (CROPS[region] && CROPS[region][key]) ? CROPS[region][key] : CROPS.nyandarua.rain;
+
+  // Irrigation tip
+  const tipEl = document.getElementById('irrigation-tip');
+  if (water === 'irrigation' || water === 'both') {
+    tipEl.innerHTML = `<div class="alert-box" style="background:var(--blue-100);margin-bottom:10px;">
+      <div style="font-size:16px;flex-shrink:0;">💧</div>
+      <div style="font-size:12px;color:var(--blue-600);line-height:1.5;">
+        <strong>Irrigation detected.</strong> Recommendations include year-round and off-season crops that command premium prices when rainfed supply is low.
+      </div>
+    </div>`;
+  } else {
+    tipEl.innerHTML = '';
+  }
+
+  // Render crops
+  const el = document.getElementById('crop-recs');
+  el.innerHTML = crops.map((c,i) => `
+    <div class="crop-card">
+      <div class="crop-top">
+        <div>
+          <div class="crop-name">${c.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${i===0?'Top pick':'Alternative'} · ${key==='irrigation'?'Irrigated':key==='both'?'Rain + Irrigation':'Rainfed'}</div>
+        </div>
+        <div class="crop-score-ring" style="background:${c.ring};color:${c.color};">${c.score}</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">${c.note}</div>
+      <div class="crop-bars">
+        <div class="bar-row"><div class="bar-label">Profitability</div><div class="bar-track"><div class="bar-fill" style="width:${c.profit}%;background:${c.color};"></div></div><span style="font-size:10px;font-family:var(--mono);color:${c.color};">${c.profit}</span></div>
+        <div class="bar-row"><div class="bar-label">Climate fit</div><div class="bar-track"><div class="bar-fill" style="width:${c.climate}%;background:var(--teal-400);"></div></div><span style="font-size:10px;font-family:var(--mono);color:var(--teal-700);">${c.climate}</span></div>
+        <div class="bar-row"><div class="bar-label">Market demand</div><div class="bar-track"><div class="bar-fill" style="width:${c.demand}%;background:var(--amber-400);"></div></div><span style="font-size:10px;font-family:var(--mono);color:var(--amber-600);">${c.demand}</span></div>
+      </div>
+      ${i===0?`<button class="btn btn-green" style="margin-top:10px;" onclick="alert('Crop selected: ${c.name}. Your seasonal plan will now be built around this crop.')">Select this crop →</button>`:''}
+    </div>
+  `).join('');
+}
+
+// INIT
+setRole('farmer');
+updateRec();
+</script>
+</body>
+</html>
